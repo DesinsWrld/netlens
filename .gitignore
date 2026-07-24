@@ -1,4 +1,5 @@
 .DS_Store
 dist/
+outputs/
 .build/
 *.log
