@@ -16,17 +16,6 @@ NetLens is a native, one-person IT operations app that turns live Mac system and
 - Checks whether a service is listening on any local TCP port
 - Runs entirely on the Mac with no account, database, analytics, or sample data
 
-## Why it stands out in a CIS portfolio
-
-NetLens demonstrates practical knowledge across four layers:
-
-| Area | Implementation |
-| --- | --- |
-| Systems | Mach memory statistics, load average, host identity, uptime |
-| Networking | Interface discovery, DNS resolution, TCP connectivity with Network.framework |
-| Application engineering | Native Objective-C/AppKit UI, timers, async state handling, input validation |
-| Delivery | Reproducible build, ad-hoc code signing, self-test, app-bundle verification |
-
 ## Build the application
 
 Requirements: macOS 13+ and Apple Command Line Tools.
