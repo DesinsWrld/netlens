@@ -1,72 +1,78 @@
-# NetLens
+# NetLens for macOS
 
-NetLens is a private, zero-dependency IT operations dashboard for one computer. It turns live operating-system and network information into a clean interface, then adds practical DNS, HTTPS, and local-port diagnostics.
+NetLens is a native, one-person IT operations app that turns live Mac system and network data into a compact integrated monitoring console. It is a real `.app`—not a website, template, hosted demo, or account-based service.
 
-![NetLens system overview](docs/netlens-overview.png)
+![NetLens native macOS app](docs/netlens-app.png)
 
-## Why it belongs in a CIS portfolio
+## What it does right now
 
-This is not a static mockup. NetLens connects a responsive browser interface to a working Node.js service and demonstrates:
+- Displays live CPU load, physical-memory use, core count, and system uptime
+- Identifies the Mac, processor, operating system, and primary IPv4 address
+- Draws a rolling system-load telemetry chart every three seconds
+- Tests a public domain over DNS/TCP port 443
+- Checks whether a service is listening on any local TCP port
+- Runs entirely on the Mac with no account, database, analytics, or sample data
 
-- **Systems knowledge:** CPU load, memory use, uptime, architecture, and host details
-- **Networking knowledge:** IPv4 interfaces, DNS resolution, HTTPS/TCP reachability, and local port checks
-- **Secure engineering:** localhost-only default binding, strict input validation, escaped dynamic UI content, and no telemetry
-- **Software delivery:** native automated tests, responsive UI, accessible labels, error states, and setup documentation
+## Why it stands out in a CIS portfolio
 
-## Run it
+NetLens demonstrates practical knowledge across four layers:
 
-Requirements: Node.js 18 or newer.
+| Area | Implementation |
+| --- | --- |
+| Systems | Mach memory statistics, load average, host identity, uptime |
+| Networking | Interface discovery, DNS resolution, TCP connectivity with Network.framework |
+| Application engineering | Native Objective-C/AppKit UI, timers, async state handling, input validation |
+| Delivery | Reproducible build, ad-hoc code signing, self-test, app-bundle verification |
 
-```bash
-npm start
-```
+## Build the application
 
-Open [http://127.0.0.1:4173](http://127.0.0.1:4173).
-
-No package installation, account, database, API key, seed data, or sample mode is required. Every system value comes from the computer currently running NetLens.
-
-## Use it
-
-1. **Overview** shows current memory, processor, uptime, active network adapters, and a rolling CPU-load graph.
-2. Enter a real public domain in **Quick diagnostic** to verify DNS resolution and HTTPS port access.
-3. Open **Diagnostics** and check a local port. Port `4173` reports NetLens itself while the app is running.
-4. Select **Refresh data** for an immediate live reading. The overview also refreshes automatically.
-
-## Test it
+Requirements: macOS 13+ and Apple Command Line Tools.
 
 ```bash
-npm test
+./scripts/build_app.sh
 ```
 
-The test suite verifies value formatting, live system data, static app delivery, API behavior, validation, and traversal protection.
-
-## Architecture
+The launchable application is created at:
 
 ```text
-Browser dashboard
-      │ JSON over localhost
-Node HTTP server
-      ├── OS metrics (node:os)
-      ├── DNS lookup (node:dns)
-      └── TCP probes (node:net)
+dist/NetLens.app
 ```
 
-The project deliberately uses only Node.js built-ins. That keeps the supply chain small and makes the app immediately runnable.
+Double-click `NetLens.app`, or run:
 
-## API
+```bash
+open dist/NetLens.app
+```
 
-| Endpoint | Purpose |
-| --- | --- |
-| `GET /api/system` | Current hardware, memory, uptime, load, and interfaces |
-| `GET /api/diagnostics?domain=example.com` | DNS lookup and TCP/443 check |
-| `GET /api/port?port=4173` | Localhost TCP port check |
+## Verify it
 
-## Privacy and safety
+```bash
+./scripts/test_app.sh
+```
 
-- The server listens on `127.0.0.1` by default, so other devices cannot access it.
-- NetLens stores no history and sends no analytics.
-- Port checks are intentionally limited to the local computer.
-- Domain input is validated before any network request.
+This builds the application, runs its live system-probe self-test, verifies the code signature, and validates the bundle metadata.
+
+## Use the diagnostics
+
+1. Enter a public domain such as `example.com`, then select **RUN DNS + HTTPS**.
+2. Enter a local port from `1` to `65535`, then select **CHECK PORT**.
+3. Green status means the destination or service is reachable; red status explains a validation or connectivity failure.
+
+Port checks are intentionally restricted to `127.0.0.1`. NetLens is a diagnostics utility, not a network scanner.
+
+## Project structure
+
+```text
+NetLens.app
+├── Sources/NetLens/main.m       Native UI and system/network probes
+├── Resources/                  App metadata and icon
+├── scripts/build_app.sh        Reproducible app-bundle build
+└── scripts/test_app.sh         Functional and packaging checks
+```
+
+## Privacy
+
+NetLens stores no readings, includes no tracking code, and sends no telemetry. A network connection occurs only when the user explicitly runs a domain diagnostic.
 
 ## License
 
