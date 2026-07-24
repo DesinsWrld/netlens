@@ -2,13 +2,16 @@
 
 NetLens is a native, one-person IT operations app that turns live Mac system and network data into a compact integrated monitoring console. It is a real `.app`—not a website, template, hosted demo, or account-based service.
 
-![NetLens native macOS app](docs/netlens-app.png)
+![NetLens secure boot sequence](docs/netlens-boot.png)
+
+![NetLens native macOS app in privacy-safe capture mode](docs/netlens-app.png)
 
 ## What it does right now
 
 - Displays live CPU load, physical-memory use, core count, and system uptime
 - Identifies the Mac, processor, operating system, and primary IPv4 address
 - Draws a rolling system-load telemetry chart every three seconds
+- Opens with an animated, cinematic secure-core boot sequence
 - Tests a public domain over DNS/TCP port 443
 - Checks whether a service is listening on any local TCP port
 - Runs entirely on the Mac with no account, database, analytics, or sample data
@@ -35,13 +38,13 @@ Requirements: macOS 13+ and Apple Command Line Tools.
 The launchable application is created at:
 
 ```text
-dist/NetLens.app
+dist/NetLensCore.app
 ```
 
 Double-click `NetLens.app`, or run:
 
 ```bash
-open dist/NetLens.app
+open dist/NetLensCore.app
 ```
 
 ## Verify it
@@ -51,6 +54,24 @@ open dist/NetLens.app
 ```
 
 This builds the application, runs its live system-probe self-test, verifies the code signature, and validates the bundle metadata.
+
+## Privacy-safe screenshots
+
+Run NetLens with the `--demo` flag whenever capturing portfolio images:
+
+```bash
+open dist/NetLensCore.app --args --demo
+```
+
+Demo mode changes only what is displayed: hostname, IPv4 address, uptime, memory, load, and operating-system build are replaced with clearly labeled synthetic values. Normal launches always show real live data.
+
+For deterministic repository screenshots that never inspect the host at all:
+
+```bash
+dist/NetLensCore.app/Contents/MacOS/NetLensCore --capture docs
+```
+
+This renders the real native boot and dashboard views entirely from an embedded synthetic dataset.
 
 ## Use the diagnostics
 
@@ -63,7 +84,7 @@ Port checks are intentionally restricted to `127.0.0.1`. NetLens is a diagnostic
 ## Project structure
 
 ```text
-NetLens.app
+NetLensCore.app
 ├── Sources/NetLens/main.m       Native UI and system/network probes
 ├── Resources/                  App metadata and icon
 ├── scripts/build_app.sh        Reproducible app-bundle build

@@ -30,11 +30,48 @@ static double MemoryUsage(void) {
     return MIN(used / (double)[NSProcessInfo processInfo].physicalMemory, 1.0);
 }
 
+@interface BootView : NSView
+@property NSImage *image;
+@property CGFloat progress;
+@property NSString *phase;
+@end
+
+@implementation BootView
+- (BOOL)isFlipped { return YES; }
+- (instancetype)initWithFrame:(NSRect)frame {
+    if ((self=[super initWithFrame:frame])) {
+        NSString *path=[[NSBundle mainBundle] pathForResource:@"boot-core" ofType:@"png"];
+        _image=[[NSImage alloc] initWithContentsOfFile:path];
+        _phase=@"INITIALIZING SECURE CORE";
+    }
+    return self;
+}
+- (void)drawRect:(NSRect)dirty {
+    [[NSColor blackColor] setFill]; NSRectFill(self.bounds);
+    if(self.image) {
+        [self.image drawInRect:self.bounds fromRect:NSZeroRect operation:NSCompositingOperationSourceOver fraction:.72 respectFlipped:YES hints:@{NSImageHintInterpolation:@(NSImageInterpolationHigh)}];
+    }
+    NSGradient *shade=[[NSGradient alloc] initWithStartingColor:[NSColor colorWithWhite:0 alpha:.12] endingColor:[NSColor colorWithWhite:0 alpha:.78]];
+    [shade drawInRect:self.bounds angle:90];
+    NSColor *amber=[NSColor colorWithCalibratedRed:1 green:.55 blue:.08 alpha:1];
+    NSDictionary *title=@{NSFontAttributeName:[NSFont monospacedSystemFontOfSize:34 weight:NSFontWeightBold],NSForegroundColorAttributeName:NSColor.whiteColor,NSKernAttributeName:@4};
+    [@"NETLENS" drawAtPoint:NSMakePoint(62,55) withAttributes:title];
+    NSDictionary *sub=@{NSFontAttributeName:[NSFont monospacedSystemFontOfSize:10 weight:NSFontWeightBold],NSForegroundColorAttributeName:amber,NSKernAttributeName:@2};
+    [@"ENDPOINT INTELLIGENCE SYSTEM" drawAtPoint:NSMakePoint(65,101) withAttributes:sub];
+    NSDictionary *phase=@{NSFontAttributeName:[NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightMedium],NSForegroundColorAttributeName:NSColor.whiteColor};
+    [self.phase drawAtPoint:NSMakePoint(65,self.bounds.size.height-96) withAttributes:phase];
+    NSRect track=NSMakeRect(65,self.bounds.size.height-58,self.bounds.size.width-130,3);
+    [[NSColor colorWithWhite:1 alpha:.15] setFill]; NSRectFill(track);
+    [amber setFill]; NSRectFill(NSMakeRect(track.origin.x,track.origin.y,track.size.width*self.progress,3));
+}
+@end
+
 @interface DashboardView : NSView
 @property NSMutableArray<NSNumber *> *history;
 @property NSDictionary<NSString *, NSString *> *reading;
 @property NSString *status;
 @property BOOL statusGood;
+@property BOOL demoMode;
 @end
 
 @implementation DashboardView
@@ -59,8 +96,8 @@ static double MemoryUsage(void) {
 - (void)drawRect:(NSRect)dirty {
     NSColor *bg=[NSColor colorWithCalibratedRed:.025 green:.055 blue:.10 alpha:1];
     NSColor *panel=[NSColor colorWithCalibratedRed:.025 green:.12 blue:.20 alpha:1];
-    NSColor *cyan=[NSColor colorWithCalibratedRed:.20 green:.78 blue:1 alpha:1];
-    NSColor *muted=[NSColor colorWithCalibratedRed:.48 green:.61 blue:.72 alpha:1];
+    NSColor *cyan=[NSColor colorWithCalibratedRed:1 green:.55 blue:.08 alpha:1];
+    NSColor *muted=[NSColor colorWithCalibratedRed:.62 green:.57 blue:.49 alpha:1];
     [bg setFill]; NSRectFill(self.bounds);
     [panel setFill]; NSRectFill(NSMakeRect(0,0,205,self.bounds.size.height));
     [self label:@"NL" rect:NSMakeRect(24,30,45,28) size:22 color:cyan weight:NSFontWeightBlack];
@@ -72,7 +109,7 @@ static double MemoryUsage(void) {
 
     [self label:@"INTEGRATED SYSTEM MONITOR" rect:NSMakeRect(230,28,390,25) size:17 color:NSColor.whiteColor weight:NSFontWeightBold];
     [self label:@"REAL-TIME DEVICE INTELLIGENCE  /  MACOS ENDPOINT" rect:NSMakeRect(230,56,430,18) size:9 color:muted weight:NSFontWeightRegular];
-    [self label:@"●  LIVE MONITORING" rect:NSMakeRect(1080,35,170,20) size:10 color:cyan weight:NSFontWeightBold];
+    [self label:@"●  VERIFIED LIVE FEED" rect:NSMakeRect(1060,35,190,20) size:10 color:cyan weight:NSFontWeightBold];
 
     NSArray *titles=@[@"LOAD AVERAGE",@"MEMORY UTIL.",@"CPU CORES",@"UPTIME"];
     NSArray *keys=@[@"load",@"memory",@"cores",@"uptime"];
@@ -86,13 +123,13 @@ static double MemoryUsage(void) {
     [self label:@"SYSTEM LOAD TELEMETRY" rect:NSMakeRect(250,208,300,18) size:11 color:cyan weight:NSFontWeightBold];
     [self label:@"LIVE 1-MINUTE LOAD / 3-SECOND INTERVAL" rect:NSMakeRect(250,230,320,15) size:8 color:muted weight:NSFontWeightRegular];
     NSRect plot=NSMakeRect(260,260,620,210);
-    [[NSColor colorWithWhite:1 alpha:.07] setStroke];
+    [[NSColor colorWithCalibratedRed:1 green:.55 blue:.08 alpha:.11] setStroke];
     for(int i=0;i<5;i++){ NSBezierPath *g=[NSBezierPath bezierPath]; CGFloat y=plot.origin.y+i*plot.size.height/4; [g moveToPoint:NSMakePoint(plot.origin.x,y)]; [g lineToPoint:NSMakePoint(NSMaxX(plot),y)]; [g stroke]; }
     double max=1; for(NSNumber *n in self.history) max=MAX(max,n.doubleValue);
     NSBezierPath *line=[NSBezierPath bezierPath];
     for(int i=0;i<self.history.count;i++){ CGFloat x=plot.origin.x+i*plot.size.width/(self.history.count-1); CGFloat y=NSMaxY(plot)-self.history[i].doubleValue/max*plot.size.height*.78-plot.size.height*.08; if(i==0)[line moveToPoint:NSMakePoint(x,y)];else[line lineToPoint:NSMakePoint(x,y)]; }
     [[cyan colorWithAlphaComponent:.18] setStroke]; line.lineWidth=10; [line stroke];
-    [cyan setStroke]; line.lineWidth=2; [line stroke];
+    [cyan setStroke]; line.lineWidth=2.5; [line stroke];
 
     NSRect profile=NSMakeRect(930,190,310,310); [self card:profile];
     [self label:@"ENDPOINT PROFILE" rect:NSMakeRect(950,208,250,18) size:11 color:cyan weight:NSFontWeightBold];
@@ -110,6 +147,7 @@ static double MemoryUsage(void) {
 @interface AppDelegate : NSObject <NSApplicationDelegate>
 @property NSWindow *window;
 @property DashboardView *dashboard;
+@property BootView *boot;
 @property NSTextField *domainInput;
 @property NSTextField *portInput;
 @property NSTimer *timer;
@@ -123,24 +161,49 @@ static double MemoryUsage(void) {
 }
 - (NSButton *)button:(NSString *)title frame:(NSRect)frame action:(SEL)action {
     NSButton *button=[NSButton buttonWithTitle:title target:self action:action]; button.frame=frame;
-    button.font=[NSFont monospacedSystemFontOfSize:10 weight:NSFontWeightBold]; button.contentTintColor=[NSColor colorWithCalibratedRed:.2 green:.78 blue:1 alpha:1]; return button;
+    button.font=[NSFont monospacedSystemFontOfSize:10 weight:NSFontWeightBold]; button.contentTintColor=[NSColor colorWithCalibratedRed:1 green:.55 blue:.08 alpha:1]; return button;
 }
 - (void)applicationDidFinishLaunching:(NSNotification *)note {
+    self.boot=[[BootView alloc] initWithFrame:NSMakeRect(0,0,1280,760)];
+    self.window=[[NSWindow alloc] initWithContentRect:self.boot.bounds styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:NO];
+    self.window.title=@"NetLens — Secure Boot"; self.window.contentView=self.boot; self.window.minSize=NSMakeSize(1100,700);
+    [self.window center]; [self.window makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
+    NSArray *phases=@[@"AUTHENTICATING LOCAL RUNTIME",@"MAPPING SYSTEM TELEMETRY",@"ESTABLISHING PRIVATE CONSOLE"];
+    for(int i=0;i<3;i++) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(i+1)*650*NSEC_PER_MSEC),dispatch_get_main_queue(),^{self.boot.progress=(i+1)/3.0;self.boot.phase=phases[i];[self.boot setNeedsDisplay:YES];});
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3800*NSEC_PER_MSEC),dispatch_get_main_queue(),^{[self showDashboard];});
+}
+- (void)showDashboard {
     self.dashboard=[[DashboardView alloc] initWithFrame:NSMakeRect(0,0,1280,760)];
-    self.window=[[NSWindow alloc] initWithContentRect:self.dashboard.bounds styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskMiniaturizable|NSWindowStyleMaskResizable backing:NSBackingStoreBuffered defer:NO];
-    self.window.title=@"NetLens — Integrated System Monitor"; self.window.contentView=self.dashboard; self.window.minSize=NSMakeSize(1100,700);
+    self.window.title=@"NetLens — Integrated System Monitor"; self.window.contentView=self.dashboard;
     self.domainInput=[self input:@"example.com" frame:NSMakeRect(250,580,220,30)]; [self.dashboard addSubview:self.domainInput];
     [self.dashboard addSubview:[self button:@"RUN DNS + HTTPS" frame:NSMakeRect(480,580,160,30) action:@selector(checkDomain)]];
     self.portInput=[self input:@"443" frame:NSMakeRect(670,580,110,30)]; [self.dashboard addSubview:self.portInput];
     [self.dashboard addSubview:[self button:@"CHECK LOCAL PORT" frame:NSMakeRect(790,580,145,30) action:@selector(checkPort)]];
+    [self.dashboard addSubview:[self button:@"PRIVACY CAPTURE" frame:NSMakeRect(900,25,145,28) action:@selector(togglePrivacy)]];
+    [self.dashboard addSubview:[self button:@"REPLAY BOOT" frame:NSMakeRect(755,25,130,28) action:@selector(replayBoot)]];
     [self refresh]; self.timer=[NSTimer scheduledTimerWithTimeInterval:3 target:self selector:@selector(refresh) userInfo:nil repeats:YES];
-    [self.window center]; [self.window makeKeyAndOrderFront:nil]; [NSApp activateIgnoringOtherApps:YES];
+}
+- (void)replayBoot {
+    self.boot=[[BootView alloc] initWithFrame:NSMakeRect(0,0,1280,760)];
+    self.window.title=@"NetLens — Secure Boot"; self.window.contentView=self.boot;
+    NSArray *phases=@[@"AUTHENTICATING LOCAL RUNTIME",@"MAPPING SYSTEM TELEMETRY",@"ESTABLISHING PRIVATE CONSOLE"];
+    for(int i=0;i<3;i++) dispatch_after(dispatch_time(DISPATCH_TIME_NOW,(i+1)*650*NSEC_PER_MSEC),dispatch_get_main_queue(),^{self.boot.progress=(i+1)/3.0;self.boot.phase=phases[i];[self.boot setNeedsDisplay:YES];});
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW,3800*NSEC_PER_MSEC),dispatch_get_main_queue(),^{self.window.title=@"NetLens — Integrated System Monitor";self.window.contentView=self.dashboard;});
 }
 - (void)refresh {
     double loads[3]={0}; getloadavg(loads,3); NSProcessInfo *p=NSProcessInfo.processInfo;
     NSInteger hours=(NSInteger)p.systemUptime/3600;
-    self.dashboard.reading=@{@"load":[NSString stringWithFormat:@"%.2f",loads[0]],@"memory":[NSString stringWithFormat:@"%d%%",(int)(MemoryUsage()*100)],@"cores":[NSString stringWithFormat:@"%ld",(long)p.processorCount],@"uptime":hours>24?[NSString stringWithFormat:@"%ldD %ldH",(long)hours/24,(long)hours%24]:[NSString stringWithFormat:@"%ldH",(long)hours],@"host":p.hostName,@"ip":PrimaryIPv4(),@"cpu":@"Apple Silicon",@"platform":[NSString stringWithFormat:@"macOS %@",p.operatingSystemVersionString]};
+    BOOL demo=self.dashboard.demoMode||[NSProcessInfo.processInfo.arguments containsObject:@"--demo"];
+    NSString *host=demo?@"portfolio-mac.local":p.hostName, *ip=demo?@"192.168.x.x":PrimaryIPv4();
+    self.dashboard.reading=@{@"load":demo?@"1.84":[NSString stringWithFormat:@"%.2f",loads[0]],@"memory":demo?@"47%":[NSString stringWithFormat:@"%d%%",(int)(MemoryUsage()*100)],@"cores":[NSString stringWithFormat:@"%ld",(long)p.processorCount],@"uptime":demo?@"3D 14H":(hours>24?[NSString stringWithFormat:@"%ldD %ldH",(long)hours/24,(long)hours%24]:[NSString stringWithFormat:@"%ldH",(long)hours]),@"host":host,@"ip":ip,@"cpu":@"Apple Silicon",@"platform":demo?@"macOS — PRIVACY SAFE":[NSString stringWithFormat:@"macOS %@",p.operatingSystemVersionString]};
+    if(demo&&[self.dashboard.status hasPrefix:@"READY"]){self.dashboard.status=@"DEMO CAPTURE — DEVICE IDENTITY SANITIZED";self.dashboard.statusGood=YES;}
     [self.dashboard.history addObject:@(loads[0])]; if(self.dashboard.history.count>28)[self.dashboard.history removeObjectAtIndex:0]; [self.dashboard setNeedsDisplay:YES];
+}
+- (void)togglePrivacy {
+    self.dashboard.demoMode=!self.dashboard.demoMode;
+    self.dashboard.status=self.dashboard.demoMode?@"PRIVACY CAPTURE ON — DEVICE IDENTITY SANITIZED":@"LIVE MODE RESTORED — LOCAL VALUES ACTIVE";
+    self.dashboard.statusGood=YES;
+    [self refresh];
 }
 - (void)setStatus:(NSString *)status good:(BOOL)good { dispatch_async(dispatch_get_main_queue(),^{ self.dashboard.status=status; self.dashboard.statusGood=good; [self.dashboard setNeedsDisplay:YES]; }); }
 - (void)probeHost:(NSString *)host port:(NSString *)port label:(NSString *)label {
@@ -169,8 +232,38 @@ static double MemoryUsage(void) {
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender{return YES;}
 @end
 
+static void WriteViewPNG(NSView *view, NSString *path) {
+    NSBitmapImageRep *rep=[view bitmapImageRepForCachingDisplayInRect:view.bounds];
+    [view cacheDisplayInRect:view.bounds toBitmapImageRep:rep];
+    NSData *png=[rep representationUsingType:NSBitmapImageFileTypePNG properties:@{}];
+    [png writeToFile:path atomically:YES];
+}
+
+static int CapturePortfolioScreenshots(NSString *directory) {
+    [[NSFileManager defaultManager] createDirectoryAtPath:directory withIntermediateDirectories:YES attributes:nil error:nil];
+    BootView *boot=[[BootView alloc] initWithFrame:NSMakeRect(0,0,1280,760)];
+    boot.progress=.66; boot.phase=@"MAPPING SYSTEM TELEMETRY";
+    WriteViewPNG(boot,[directory stringByAppendingPathComponent:@"netlens-boot.png"]);
+
+    DashboardView *dash=[[DashboardView alloc] initWithFrame:NSMakeRect(0,0,1280,760)];
+    dash.demoMode=YES; dash.statusGood=YES; dash.status=@"DEMO CAPTURE — DEVICE IDENTITY SANITIZED";
+    dash.reading=@{@"load":@"1.84",@"memory":@"47%",@"cores":@"10",@"uptime":@"3D 14H",@"host":@"portfolio-mac.local",@"ip":@"192.168.x.x",@"cpu":@"Apple Silicon",@"platform":@"macOS — PRIVACY SAFE"};
+    [dash.history removeAllObjects];
+    NSArray *samples=@[@1.1,@1.2,@1.0,@1.4,@1.6,@1.3,@1.8,@2.1,@1.7,@1.5,@1.9,@2.4,@2.2,@2.0,@2.6,@2.1,@1.8,@2.3,@2.7,@2.4,@2.9,@2.5,@2.2,@2.6,@3.0,@2.7,@2.4,@2.8];
+    [dash.history addObjectsFromArray:samples];
+    NSTextField *domain=[[NSTextField alloc] initWithFrame:NSMakeRect(250,580,220,30)]; domain.stringValue=@"example.com"; domain.font=[NSFont monospacedSystemFontOfSize:11 weight:NSFontWeightRegular]; domain.textColor=NSColor.whiteColor; domain.backgroundColor=[NSColor colorWithCalibratedRed:.025 green:.06 blue:.1 alpha:1]; [dash addSubview:domain];
+    NSButton *dns=[NSButton buttonWithTitle:@"RUN DNS + HTTPS" target:nil action:nil]; dns.frame=NSMakeRect(480,580,160,30); dns.font=[NSFont monospacedSystemFontOfSize:10 weight:NSFontWeightBold]; dns.contentTintColor=[NSColor colorWithCalibratedRed:1 green:.55 blue:.08 alpha:1]; [dash addSubview:dns];
+    NSTextField *port=[[NSTextField alloc] initWithFrame:NSMakeRect(670,580,110,30)]; port.stringValue=@"443"; port.font=domain.font; port.textColor=domain.textColor; port.backgroundColor=domain.backgroundColor; [dash addSubview:port];
+    NSButton *check=[NSButton buttonWithTitle:@"CHECK LOCAL PORT" target:nil action:nil]; check.frame=NSMakeRect(790,580,145,30); check.font=dns.font; check.contentTintColor=dns.contentTintColor; [dash addSubview:check];
+    NSButton *privacy=[NSButton buttonWithTitle:@"PRIVACY CAPTURE" target:nil action:nil]; privacy.frame=NSMakeRect(900,25,145,28); privacy.font=dns.font; privacy.contentTintColor=dns.contentTintColor; [dash addSubview:privacy];
+    WriteViewPNG(dash,[directory stringByAppendingPathComponent:@"netlens-app.png"]);
+    printf("Privacy-safe screenshots written to %s\n",directory.UTF8String);
+    return 0;
+}
+
 int main(int argc,const char *argv[]){
     @autoreleasepool {
+        if(argc>2&&strcmp(argv[1],"--capture")==0){[NSApplication sharedApplication];return CapturePortfolioScreenshots([NSString stringWithUTF8String:argv[2]]);}
         if(argc>1&&strcmp(argv[1],"--self-test")==0){NSProcessInfo *p=NSProcessInfo.processInfo;if(p.processorCount<1||p.hostName.length==0)return 1;printf("NetLens self-test passed\nHost: %s | CPU cores: %ld | IPv4: %s\n",p.hostName.UTF8String,(long)p.processorCount,PrimaryIPv4().UTF8String);return 0;}
         NSApplication *app=NSApplication.sharedApplication; AppDelegate *delegate=[AppDelegate new]; app.delegate=delegate; [app setActivationPolicy:NSApplicationActivationPolicyRegular]; [app run];
     } return 0;
